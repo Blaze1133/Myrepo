@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Inherit the default sale order PDF template and tweak header, style, and table classes -->
+  <template id="report_saleorder_document_custom" inherit_id="sale.report_saleorder_document">
+    <!-- Inject report CSS inside the page so it affects the PDF -->
+    <xpath expr="//div[@class='page']" position="inside">
+      <style>
+        /* Basic styling — tweak values to match your design */
+        .company_logo { max-height: 70px; max-width: 220px; }
+        .company_info { font-size: 11px; line-height: 1.2; margin-left: 10px; }
+        .custom-header { margin-bottom: 10px; }
+        .customer-block { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e9ecef; }
+        .custom-table th { background: #f8f9fa; padding: 8px; font-weight: 600; border-bottom: 1px solid #dee2e6; }
+        .custom-table td { padding: 8px; border-bottom: 1px solid #efefef; vertical-align: middle; }
+        .totals-table td { padding: 6px 8px; }
+        .rt-right { text-align: right; }
+        .muted { color: #6c757d; font-size: 11px; }
+        /* Make totals stand out */
+        .grand-total { font-weight: 700; font-size: 14px; }
+      </style>
+    </xpath>
+
+    <!-- Replace the default 'informations' area with a modern header + customer block -->
+    <xpath expr="//div[@id='informations']" position="replace">
+      <div class="row mb-4" id="informations">
+        <!-- Company left -->
+        <div class="col-6 custom-header d-flex">
+          <div>
+            <t t-if="doc.company_id.logo">
+              <img t-att-src="image_data_uri(doc.company_id.logo)" class="company_logo"/>
+            </t>
+          </div>
+          <div class="company_info">
+            <strong t-field="doc.company_id.name"/>
+            <div t-if="doc.company_id.street"><t t-field="doc.company_id.street"/></div>
+            <div>
+              <t t-if="doc.company_id.city"><t t-field="doc.company_id.city"/></t>
+              <t t-if="doc.company_id.state_id">, <t t-field="doc.company_id.state_id"/></t>
+              <t t-if="doc.company_id.zip"> - <t t-field="doc.company_id.zip"/></t>
+            </div>
+            <div t-if="doc.company_id.phone" class="muted">Phone: <t t-field="doc.company_id.phone"/></div>
+            <div t-if="doc.company_id.website" class="muted">Web: <t t-field="doc.company_id.website"/></div>
+          </div>
+        </div>
+
+        <!-- Document meta right -->
+        <div class="col-6 text-end">
+          <h2 class="mb-0">
+            <t t-if="is_proforma">Pro-Forma Invoice #</t>
+            <t t-elif="doc.state in ['draft','sent']">Quotation #</t>
+            <t t-else="">Order #</t>
+            <span t-field="doc.name"/>
+          </h2>
+          <div><strong>Date:</strong> <span t-field="doc.date_order" t-options="{'widget':'date'}"/></div>
+          <div t-if="doc.validity_date and doc.state in ['draft','sent']"><strong>Expiration:</strong> <span t-field="doc.validity_date"/></div>
+          <div t-if="doc.user_id.name"><strong>Salesperson:</strong> <span t-field="doc.user_id"/></div>
+        </div>
+
+        <!-- Customer billing/shipping block -->
+        <div class="col-12 customer-block">
+          <div class="row">
+            <div class="col-6">
+              <strong>Bill To</strong>
+              <div t-field="doc.partner_id" t-options='{"widget": "contact", "fields": ["name","address","phone"], "no_marker": true}'/>
+            </div>
+            <div class="col-6 text-end">
+              <strong>Ship To</strong>
+              <div t-field="doc.partner_shipping_id" t-options='{"widget": "contact", "fields": ["name","address","phone"], "no_marker": true}'/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </xpath>
+
+    <!-- Add a class to the main products table so our css applies -->
+    <xpath expr="//table[contains(@class,'o_main_table')]" position="attributes">
+      <attribute name="class">o_main_table table o_has_total_table table-borderless custom-table</attribute>
+    </xpath>
+
+    <!-- Replace totals section with same functional totals but styled (keeps sale.document_tax_totals) -->
+    <xpath expr="//div[@id='total']" position="replace">
+      <div id="total" class="row mt-n3" name="total">
+        <div t-attf-class="#{'col-6' if report_type != 'html' else 'col-sm-7 col-md-6'} ms-auto">
+          <table class="o_total_table table table-borderless totals-table">
+            <!-- Use the standard macro that sale uses for tax totals (keeps logic intact) -->
+            <t t-call="sale.document_tax_totals">
+              <t t-set="tax_totals" t-value="doc.tax_totals"/>
+              <t t-set="currency" t-value="doc.currency_id"/>
+            </t>
+          </table>
+        </div>
+      </div>
+    </xpath>
+
+  </template>
+</odoo>
